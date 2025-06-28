@@ -1,7 +1,6 @@
-import net.minecraftforge.gradle.patcher.tasks.ReobfuscateJar
 import org.spongepowered.asm.gradle.plugins.MixinExtension
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.*
 
 buildscript {
   repositories {
@@ -240,16 +239,10 @@ dependencies {
   annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
 
   // netty quic
-  //val nettyQuicVersion = "4.2.2.Final"
-  //minecraftLibrary("io.netty:netty-codec-native-quic:$nettyQuicVersion:linux-x86_64")
-  //minecraftLibrary("io.netty:netty-codec-native-quic:$nettyQuicVersion:osx-x86_64")
-  //minecraftLibrary("io.netty:netty-codec-native-quic:$nettyQuicVersion:windows-x86_64")
   val nettyQuicVersion = "0.0.73.Final"
   minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:linux-x86_64")
   minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:osx-x86_64")
   minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:windows-x86_64")
-
-  minecraftLibrary("com.esotericsoftware", "reflectasm", "1.11.9")
 
   // lombok
   val lombokVersion = "1.18.38"

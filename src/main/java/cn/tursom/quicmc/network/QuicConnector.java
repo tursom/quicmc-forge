@@ -45,8 +45,6 @@ public class QuicConnector extends Thread {
     private final ServerData serverData;
     private final Consumer<Component> callback;
 
-    private Future<QuicStreamChannel> streamChannelFuture;
-
     private final EventLoopGroup group = new NioEventLoopGroup();
 
     public QuicConnector(@NotNull String name, ConnectScreen connectScreen, Minecraft minecraft, ServerAddress serverAddress, ServerData serverData, Consumer<Component> callback) {
@@ -85,6 +83,7 @@ public class QuicConnector extends Thread {
 
             inetsocketaddress = optional.get();
             Connection connection;
+            Future<QuicStreamChannel> streamChannelFuture;
             synchronized (connectScreen) {
                 if (accessor.isAborted()) {
                     return;
@@ -126,7 +125,6 @@ public class QuicConnector extends Thread {
 
                 // 创建流并发送数据
                 streamChannelFuture = quicChannel.createStream(QuicStreamType.BIDIRECTIONAL, new QuicStreamInitializer(connection));
-                //accessor.setChannelFuture(Connection.connect(inetsocketaddress, minecraft.options.useNativeTransport(), connection));
             }
 
             QuicStreamChannel quicChannel = streamChannelFuture.syncUninterruptibly().get();
@@ -165,7 +163,7 @@ public class QuicConnector extends Thread {
                 exception = exception2;
             }
 
-            ConnectScreenAccessor.getLogger().error("Couldn't connect to server", (Throwable) exception2);
+            ConnectScreenAccessor.getLogger().error("Couldn't connect to server", exception2);
             String s = inetsocketaddress == null ? exception.getMessage() : exception.getMessage().replaceAll(inetsocketaddress.getHostName() + ":" + inetsocketaddress.getPort(), "").replaceAll(inetsocketaddress.toString(), "");
             minecraft.execute(() -> {
                 minecraft.setScreen(new DisconnectedScreen(accessor.getParent(), accessor.getConnectFailedTitle(), Component.translatable("disconnect.genericReason", s)));
@@ -179,17 +177,12 @@ public class QuicConnector extends Thread {
         private final Connection connection;
 
         @Override
-        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        public void channelActive(ChannelHandlerContext ctx) {
             ctx.read();
         }
 
         @Override
         protected void initChannel(QuicStreamChannel ch) {
-            try {
-                ch.config().setOption(ChannelOption.TCP_NODELAY, true);
-            } catch (ChannelException channelexception) {
-            }
-
             ChannelPipeline channelpipeline = ch.pipeline().addLast("timeout", new ReadTimeoutHandler(30));
             Connection.configureSerialization(channelpipeline, PacketFlow.CLIENTBOUND);
             channelpipeline.addLast("packet_handler", connection);
