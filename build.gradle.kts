@@ -239,10 +239,12 @@ dependencies {
   annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
 
   // netty quic
-  val nettyQuicVersion = "0.0.73.Final"
-  minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:linux-x86_64")
-  minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:osx-x86_64")
-  minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:windows-x86_64")
+  //val nettyQuicVersion = "0.0.72.Final"
+  //minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:linux-x86_64")
+  //minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:linux-aarch_64")
+  //minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:osx-x86_64")
+  //minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:osx-aarch_64")
+  //minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:windows-x86_64")
 
   // lombok
   val lombokVersion = "1.18.38"

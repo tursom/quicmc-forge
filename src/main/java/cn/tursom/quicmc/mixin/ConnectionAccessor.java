@@ -1,6 +1,5 @@
 package cn.tursom.quicmc.mixin;
 
-import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.network.Connection;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
