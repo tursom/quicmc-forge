@@ -9,6 +9,7 @@ import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.incubator.codec.quic.*;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,13 +40,13 @@ public class QuicConnector extends Thread {
             .applicationProtocols("minecraft", "raw", "quic") // 多个协议选项
             .build();
 
+    private static final EventLoopGroup GROUP = new NioEventLoopGroup(new DefaultThreadFactory("quic-connector"));
+
     private final ConnectScreen connectScreen;
     private final Minecraft minecraft;
     private final ServerAddress serverAddress;
     private final ServerData serverData;
     private final Consumer<Component> callback;
-
-    private final EventLoopGroup group = new NioEventLoopGroup();
 
     public QuicConnector(@NotNull String name, ConnectScreen connectScreen, Minecraft minecraft, ServerAddress serverAddress, ServerData serverData, Consumer<Component> callback) {
         super(name);
@@ -95,7 +96,7 @@ public class QuicConnector extends Thread {
                 ((ConnectionAccessor) connection).setActivationHandler(NetworkHooks::registerClientLoginChannel);
 
                 Bootstrap bootstrap = new Bootstrap();
-                Channel channel = bootstrap.group(group)
+                Channel channel = bootstrap.group(GROUP)
                         .channel(NioDatagramChannel.class)
                         .handler(new QuicClientCodecBuilder()
                                 .sslContext(SSL_CONTEXT)

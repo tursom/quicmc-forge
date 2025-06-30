@@ -71,7 +71,7 @@ group = mod_group_id
 version = mod_version
 
 base {
-  archivesName.set(mod_id)
+  archivesName.set(mod_name)
 }
 
 java {
