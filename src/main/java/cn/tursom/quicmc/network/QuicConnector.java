@@ -12,6 +12,7 @@ import io.netty.incubator.codec.quic.*;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -31,8 +32,8 @@ import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 public class QuicConnector extends Thread {
     private static final QuicSslContext SSL_CONTEXT = QuicSslContextBuilder.forClient()
@@ -46,15 +47,17 @@ public class QuicConnector extends Thread {
     private final Minecraft minecraft;
     private final ServerAddress serverAddress;
     private final ServerData serverData;
-    private final Consumer<Component> callback;
 
-    public QuicConnector(@NotNull String name, ConnectScreen connectScreen, Minecraft minecraft, ServerAddress serverAddress, ServerData serverData, Consumer<Component> callback) {
+    public QuicConnector(@NotNull String name,
+                         ConnectScreen connectScreen,
+                         Minecraft minecraft,
+                         ServerAddress serverAddress,
+                         ServerData serverData) {
         super(name);
         this.connectScreen = connectScreen;
         this.minecraft = minecraft;
         this.serverAddress = serverAddress;
         this.serverData = serverData;
-        this.callback = callback;
     }
 
     @Override
@@ -93,39 +96,7 @@ public class QuicConnector extends Thread {
                 // same as Connection.connect
 
                 connection = new Connection(PacketFlow.CLIENTBOUND);
-                ((ConnectionAccessor) connection).setActivationHandler(NetworkHooks::registerClientLoginChannel);
-
-                Bootstrap bootstrap = new Bootstrap();
-                Channel channel = bootstrap.group(GROUP)
-                        .channel(NioDatagramChannel.class)
-                        .handler(new QuicClientCodecBuilder()
-                                .sslContext(SSL_CONTEXT)
-                                .initialMaxData(33554432L)
-                                .initialMaxStreamDataBidirectionalLocal(16777216L)
-                                .initialMaxStreamDataBidirectionalRemote(16777216L)
-                                .initialMaxStreamDataUnidirectional(16777216L)
-                                .initialMaxStreamsBidirectional(100L)
-                                .initialMaxStreamsUnidirectional(100L)
-                                .activeMigration(true)
-                                .build())
-                        .bind(0).sync().channel();
-
-                // 连接到服务器
-                QuicChannel quicChannel = QuicChannel.newBootstrap(channel)
-                        .handler(new ChannelInitializer<QuicChannel>() {
-                            @Override
-                            protected void initChannel(QuicChannel ch) {
-                                // QUIC 连接处理器
-                                ch.pipeline().addLast(new QuicConnectionHandler());
-                            }
-                        })
-                        .streamHandler(new QuicStreamInitializer(connection))
-                        .remoteAddress(inetsocketaddress)
-                        .connect()
-                        .get();
-
-                // 创建流并发送数据
-                streamChannelFuture = quicChannel.createStream(QuicStreamType.BIDIRECTIONAL, new QuicStreamInitializer(connection));
+                streamChannelFuture = connect(inetsocketaddress, connection);
             }
 
             QuicStreamChannel quicChannel = streamChannelFuture.syncUninterruptibly().get();
@@ -147,7 +118,7 @@ public class QuicConnector extends Thread {
                     accessor.getParent(),
                     false,
                     null,
-                    callback));
+                    accessor::invokeUpdateStatus));
             //ConnectScreen.this::updateStatus));
             accessor.getConnection().send(new ClientIntentionPacket(inetsocketaddress.getHostName(), inetsocketaddress.getPort(), ConnectionProtocol.LOGIN));
             accessor.getConnection().send(new ServerboundHelloPacket(minecraft.getUser().getName(), Optional.ofNullable(minecraft.getUser().getProfileId())));
@@ -172,15 +143,63 @@ public class QuicConnector extends Thread {
         }
     }
 
+    /**
+     * 连接到远程服务器
+     *
+     * @see Connection#connectToServer(InetSocketAddress, boolean)
+     */
+    public static Connection connectToServer(SocketAddress remote) {
+        var connection = new Connection(PacketFlow.CLIENTBOUND);
+        connect(remote, connection).syncUninterruptibly();
+        return connection;
+    }
+
+    /**
+     * 连接到远程服务器
+     *
+     * @see Connection#connect(InetSocketAddress, boolean, Connection)
+     */
+    @SneakyThrows
+    public static Future<QuicStreamChannel> connect(SocketAddress remote, Connection connection) {
+        ((ConnectionAccessor) connection).setActivationHandler(NetworkHooks::registerClientLoginChannel);
+
+        Bootstrap bootstrap = new Bootstrap();
+        Channel channel = bootstrap.group(GROUP)
+                .channel(NioDatagramChannel.class)
+                .handler(new QuicClientCodecBuilder()
+                        .sslContext(SSL_CONTEXT)
+                        .initialMaxData(33554432L)
+                        .initialMaxStreamDataBidirectionalLocal(16777216L)
+                        .initialMaxStreamDataBidirectionalRemote(16777216L)
+                        .initialMaxStreamDataUnidirectional(16777216L)
+                        .initialMaxStreamsBidirectional(100L)
+                        .initialMaxStreamsUnidirectional(100L)
+                        .activeMigration(true)
+                        .build())
+                .bind(0).sync().channel();
+
+        // 连接到服务器
+        QuicChannel quicChannel = QuicChannel.newBootstrap(channel)
+                .handler(new ChannelInitializer<QuicChannel>() {
+                    @Override
+                    protected void initChannel(QuicChannel ch) {
+                        // QUIC 连接处理器
+                        ch.pipeline().addLast(new QuicConnectionHandler());
+                    }
+                })
+                .streamHandler(new QuicStreamInitializer(connection))
+                .remoteAddress(remote)
+                .connect()
+                .get();
+
+        // 创建流并发送数据
+        return quicChannel.createStream(QuicStreamType.BIDIRECTIONAL, new QuicStreamInitializer(connection));
+    }
+
     @Slf4j
     @RequiredArgsConstructor
     private static class QuicStreamInitializer extends ChannelInitializer<QuicStreamChannel> {
         private final Connection connection;
-
-        @Override
-        public void channelActive(ChannelHandlerContext ctx) {
-            ctx.read();
-        }
 
         @Override
         protected void initChannel(QuicStreamChannel ch) {
@@ -190,8 +209,10 @@ public class QuicConnector extends Thread {
         }
 
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            super.channelRead(ctx, msg);
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            ((QuicStreamChannel) ctx.channel()).parent().close();
+
+            super.channelInactive(ctx);
         }
     }
 

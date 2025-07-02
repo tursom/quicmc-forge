@@ -10,8 +10,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
-
-import java.util.concurrent.atomic.AtomicInteger;
+import org.spongepowered.asm.mixin.gen.Invoker;
 
 @OnlyIn(Dist.CLIENT)
 @Mixin(ConnectScreen.class)
@@ -36,9 +35,6 @@ public interface ConnectScreenAccessor {
     Component getConnectFailedTitle();
 
     @Accessor("channelFuture")
-    ChannelFuture getChannelFuture();
-
-    @Accessor("channelFuture")
     void setChannelFuture(ChannelFuture channelFuture);
 
     @Accessor("connection")
@@ -46,4 +42,7 @@ public interface ConnectScreenAccessor {
 
     @Accessor("connection")
     void setConnection(Connection connection);
+
+    @Invoker("updateStatus")
+    void invokeUpdateStatus(Component p_95718_);
 }

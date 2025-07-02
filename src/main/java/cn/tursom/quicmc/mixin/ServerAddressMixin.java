@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @OnlyIn(Dist.CLIENT)
@@ -25,38 +26,52 @@ public class ServerAddressMixin {
     @Shadow
     private static Logger LOGGER;
 
-    @Inject(at = @At("HEAD"),
-            method = "parseString(Ljava/lang/String;)Lnet/minecraft/client/multiplayer/resolver/ServerAddress;",
-            cancellable = true)
-    private static void parseString(String address, CallbackInfoReturnable<ServerAddress> ci) {
-        if (address == null || !address.startsWith(PROTOCOL)) {
-            return;
-        }
 
-        address = address.substring(PROTOCOL.length());
-        try {
-            HostAndPort hostandport = HostAndPort.fromString(address).withDefaultPort(25565);
-            ServerAddress serverAddress = hostandport.getHost().isEmpty() ? INVALID : new ServerAddress(hostandport.getHost(), hostandport.getPort());
-            ci.setReturnValue(serverAddress);
-            ci.cancel();
-        } catch (IllegalArgumentException illegalargumentexception) {
-            LOGGER.info("Failed to parse URL {}", address, illegalargumentexception);
-            ci.setReturnValue(INVALID);
-            ci.cancel();
+    @ModifyVariable(
+            method = {"parseString", "isValidAddress"},
+            at = @At("HEAD"),
+            ordinal = 0,
+            argsOnly = true)
+    private static String removeHeader(String address) {
+        if (address == null || !address.startsWith(PROTOCOL)) {
+            return address;
+        } else {
+            return address.substring(PROTOCOL.length());
         }
     }
+
+    //@Inject(at = @At("HEAD"),
+    //        method = "parseString(Ljava/lang/String;)Lnet/minecraft/client/multiplayer/resolver/ServerAddress;",
+    //        cancellable = true)
+    //private static void parseString(String address, CallbackInfoReturnable<ServerAddress> ci) {
+    //    if (address == null || !address.startsWith(PROTOCOL)) {
+    //        return;
+    //    }
+    //
+    //    address = address.substring(PROTOCOL.length());
+    //    try {
+    //        HostAndPort hostandport = HostAndPort.fromString(address).withDefaultPort(25565);
+    //        ServerAddress serverAddress = hostandport.getHost().isEmpty() ? INVALID : new ServerAddress(hostandport.getHost(), hostandport.getPort());
+    //        ci.setReturnValue(serverAddress);
+    //        ci.cancel();
+    //    } catch (IllegalArgumentException illegalargumentexception) {
+    //        LOGGER.info("Failed to parse URL {}", address, illegalargumentexception);
+    //        ci.setReturnValue(INVALID);
+    //        ci.cancel();
+    //    }
+    //}
 
     // isValidAddress
-    @Inject(at = @At("HEAD"),
-            method = "isValidAddress(Ljava/lang/String;)Z",
-            cancellable = true)
-    private static void isValidAddress(String address, CallbackInfoReturnable<Boolean> ci) {
-        if (address == null || !address.startsWith(PROTOCOL)) {
-            return;
-        }
-
-        address = address.substring(PROTOCOL.length());
-        ci.setReturnValue(ServerAddress.isValidAddress(address));
-        ci.cancel();
-    }
+    //@Inject(at = @At("HEAD"),
+    //        method = "isValidAddress(Ljava/lang/String;)Z",
+    //        cancellable = true)
+    //private static void isValidAddress(String address, CallbackInfoReturnable<Boolean> ci) {
+    //    if (address == null || !address.startsWith(PROTOCOL)) {
+    //        return;
+    //    }
+    //
+    //    address = address.substring(PROTOCOL.length());
+    //    ci.setReturnValue(ServerAddress.isValidAddress(address));
+    //    ci.cancel();
+    //}
 }

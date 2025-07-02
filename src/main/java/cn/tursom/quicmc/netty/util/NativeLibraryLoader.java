@@ -36,6 +36,7 @@ import java.util.*;
  * Helper class to load JNI resources.
  *
  */
+@SuppressWarnings("ALL")
 public final class NativeLibraryLoader {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(NativeLibraryLoader.class);
@@ -80,31 +81,6 @@ public final class NativeLibraryLoader {
         DETECT_NATIVE_LIBRARY_DUPLICATES = SystemPropertyUtil.getBoolean(
                 "io.netty.native.detectNativeLibraryDuplicates", true);
         logger.debug("-Dio.netty.native.detectNativeLibraryDuplicates: {}", DETECT_NATIVE_LIBRARY_DUPLICATES);
-    }
-
-    /**
-     * Loads the first available library in the collection with the specified
-     * {@link ClassLoader}.
-     *
-     * @throws IllegalArgumentException
-     *         if none of the given libraries load successfully.
-     */
-    public static void loadFirstAvailable(ClassLoader loader, String... names) {
-        List<Throwable> suppressed = new ArrayList<Throwable>();
-        for (String name : names) {
-            try {
-                load(name, loader);
-                logger.debug("Loaded library with name '{}'", name);
-                return;
-            } catch (Throwable t) {
-                suppressed.add(t);
-            }
-        }
-
-        IllegalArgumentException iae =
-                new IllegalArgumentException("Failed to load any of the given libraries: " + Arrays.toString(names));
-        ThrowableUtil.addSuppressedAndClear(iae, suppressed);
-        throw iae;
     }
 
     /**

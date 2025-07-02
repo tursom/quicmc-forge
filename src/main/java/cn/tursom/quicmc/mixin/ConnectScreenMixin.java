@@ -30,14 +30,6 @@ public class ConnectScreenMixin {
     @Shadow
     static Logger LOGGER;
 
-    @Final
-    @Shadow
-    static Component ABORT_CONNECTION;
-
-    @Shadow
-    private void updateStatus(Component p_95718_) {
-    }
-
     @Inject(at = @At("HEAD"),
             method = "connect(Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/multiplayer/resolver/ServerAddress;Lnet/minecraft/client/multiplayer/ServerData;)V",
             cancellable = true)
@@ -49,7 +41,7 @@ public class ConnectScreenMixin {
         Thread thread = new QuicConnector(
                 "Server Connector #" + UNIQUE_THREAD_ID.incrementAndGet(),
                 (ConnectScreen) (Object) this,
-                minecraft, serverAddress, serverData, this::updateStatus);
+                minecraft, serverAddress, serverData);
         thread.setUncaughtExceptionHandler(new DefaultUncaughtExceptionHandler(LOGGER));
         thread.start();
         ci.cancel();

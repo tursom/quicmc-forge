@@ -19,6 +19,8 @@ plugins {
   id("net.minecraftforge.gradle") version "[6.0.16,6.2)"
 }
 
+apply(plugin = "org.spongepowered.mixin")
+
 fun property(name: String): String {
   return project.findProperty(name) as? String ?: throw IllegalArgumentException("Property '$name' is not set.")
 }
@@ -64,8 +66,6 @@ val forge_version_range = property("forge_version_range")
 
 @Suppress("PropertyName")
 val loader_version_range = property("loader_version_range")
-
-apply(plugin = "org.spongepowered.mixin")
 
 group = mod_group_id
 version = mod_version
@@ -211,6 +211,8 @@ repositories {
   // flatDir {
   //     dir "libs"
   // }
+
+  maven("https://jitpack.io")
 }
 
 dependencies {
