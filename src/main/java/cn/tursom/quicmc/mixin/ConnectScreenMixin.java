@@ -1,5 +1,7 @@
 package cn.tursom.quicmc.mixin;
 
+import cn.tursom.quicmc.network.ClientProtocol;
+import cn.tursom.quicmc.network.ProtocolManager;
 import cn.tursom.quicmc.network.QuicConnector;
 import net.minecraft.DefaultUncaughtExceptionHandler;
 import net.minecraft.client.Minecraft;
@@ -34,11 +36,12 @@ public class ConnectScreenMixin {
             method = "connect(Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/multiplayer/resolver/ServerAddress;Lnet/minecraft/client/multiplayer/ServerData;)V",
             cancellable = true)
     private void connect(Minecraft minecraft, ServerAddress serverAddress, ServerData serverData, CallbackInfo ci) {
-        if (!serverData.ip.startsWith("quic://")) {
+        ClientProtocol protocol = ProtocolManager.findClientProtocol(serverData.ip);
+        if (protocol == null) {
             return;
         }
 
-        Thread thread = new QuicConnector(
+        Thread thread = protocol.newConnector(
                 "Server Connector #" + UNIQUE_THREAD_ID.incrementAndGet(),
                 (ConnectScreen) (Object) this,
                 minecraft, serverAddress, serverData);

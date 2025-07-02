@@ -1,11 +1,12 @@
 package cn.tursom.quicmc.mixin;
 
-import cn.tursom.quicmc.network.QuicConnector;
-import cn.tursom.quicmc.network.ThreadLocals;
+import cn.tursom.quicmc.network.ClientProtocol;
+import cn.tursom.quicmc.network.ProtocolManager;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerStatusPinger;
 import net.minecraft.network.Connection;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -15,6 +16,9 @@ import java.net.InetSocketAddress;
 
 @Mixin(ServerStatusPinger.class)
 public class ServerStatusPingerMixin {
+    @Unique
+    private final ThreadLocal<ServerData> CURRENT_SERVER = new ThreadLocal<>();
+
     @Redirect(
             method = "pingServer",
             at = @At(value = "INVOKE",
@@ -22,16 +26,17 @@ public class ServerStatusPingerMixin {
             )
     )
     private Connection redirectConnectToServer(InetSocketAddress address, boolean epoll) {
-        ServerData serverData = ThreadLocals.CURRENT_SERVER.get();
+        ServerData serverData = CURRENT_SERVER.get();
         if (serverData == null) {
             return Connection.connectToServer(address, epoll);
         }
 
-        if (!serverData.ip.startsWith("quic://")) {
+        ClientProtocol protocol = ProtocolManager.findClientProtocol(serverData.ip);
+        if (protocol == null) {
             return Connection.connectToServer(address, epoll);
         }
 
-        return QuicConnector.connectToServer(address);
+        return protocol.connectToServer(serverData, address, epoll);
     }
 
     @Inject(method = "pingServer",
@@ -40,7 +45,7 @@ public class ServerStatusPingerMixin {
                     shift = At.Shift.BEFORE)
     )
     private void beforeConnectToServer(ServerData serverData, Runnable runnable, CallbackInfo ci) {
-        ThreadLocals.CURRENT_SERVER.set(serverData);
+        CURRENT_SERVER.set(serverData);
     }
 
     @Inject(method = "pingServer",
@@ -49,6 +54,6 @@ public class ServerStatusPingerMixin {
                     shift = At.Shift.AFTER)
     )
     private void afterConnectToServer(ServerData serverData, Runnable runnable, CallbackInfo ci) {
-        ThreadLocals.CURRENT_SERVER.remove();
+        CURRENT_SERVER.remove();
     }
 }

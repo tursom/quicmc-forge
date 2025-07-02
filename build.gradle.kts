@@ -78,6 +78,8 @@ java {
   toolchain.languageVersion = JavaLanguageVersion.of(17)
 }
 
+jarJar.enable()
+
 minecraft {
   // The mappings can be changed at any time and must be in the following format.
   // Channel:   Version:
@@ -247,6 +249,14 @@ dependencies {
   //minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:osx-x86_64")
   //minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:osx-aarch_64")
   //minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:windows-x86_64")
+
+  val nettyVersion = "4.1.82.Final"
+  minecraftLibrary("io.netty", "netty-codec-http", nettyVersion) {
+    exclude("io.netty")
+  }
+  jarJar("io.netty", "netty-codec-http", "[$nettyVersion,$nettyVersion]") {
+    exclude("io.netty")
+  }
 
   // lombok
   val lombokVersion = "1.18.38"

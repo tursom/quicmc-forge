@@ -1,146 +1,40 @@
 package cn.tursom.quicmc.network;
 
-import cn.tursom.quicmc.mixin.ConnectScreenAccessor;
 import cn.tursom.quicmc.mixin.ConnectionAccessor;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.incubator.codec.quic.*;
-import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
-import net.minecraft.client.gui.screens.DisconnectedScreen;
-import net.minecraft.client.multiplayer.ClientHandshakePacketListenerImpl;
 import net.minecraft.client.multiplayer.ServerData;
-import net.minecraft.client.multiplayer.resolver.ResolvedServerAddress;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
-import net.minecraft.client.multiplayer.resolver.ServerNameResolver;
 import net.minecraft.network.Connection;
-import net.minecraft.network.ConnectionProtocol;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
-import net.minecraft.network.protocol.login.ServerboundHelloPacket;
+import net.minecraft.util.LazyLoadedValue;
 import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.Optional;
 
-public class QuicConnector extends Thread {
+public class QuicConnector extends AbstractConnector {
     private static final QuicSslContext SSL_CONTEXT = QuicSslContextBuilder.forClient()
             .trustManager(InsecureTrustManagerFactory.INSTANCE)
             .applicationProtocols("minecraft", "raw", "quic") // 多个协议选项
             .build();
 
-    private static final EventLoopGroup GROUP = new NioEventLoopGroup(new DefaultThreadFactory("quic-connector"));
-
-    private final ConnectScreen connectScreen;
-    private final Minecraft minecraft;
-    private final ServerAddress serverAddress;
-    private final ServerData serverData;
-
-    public QuicConnector(@NotNull String name,
-                         ConnectScreen connectScreen,
-                         Minecraft minecraft,
-                         ServerAddress serverAddress,
-                         ServerData serverData) {
-        super(name);
-        this.connectScreen = connectScreen;
-        this.minecraft = minecraft;
-        this.serverAddress = serverAddress;
-        this.serverData = serverData;
-    }
-
-    @Override
-    public void run() {
-        ConnectScreenAccessor accessor = (ConnectScreenAccessor) connectScreen;
-
-        InetSocketAddress inetsocketaddress = null;
-
-        try {
-            if (accessor.isAborted()) {
-                return;
-            }
-
-            Optional<InetSocketAddress> optional = ServerNameResolver.DEFAULT.resolveAddress(serverAddress).map(ResolvedServerAddress::asInetSocketAddress);
-            if (accessor.isAborted()) {
-                return;
-            }
-
-            if (optional.isEmpty()) {
-                ConnectScreenAccessor.getLogger().error("Couldn't connect to server: Unknown host \"{}\"", serverAddress.getHost());
-                net.minecraftforge.network.DualStackUtils.logInitialPreferences();
-                minecraft.execute(() -> {
-                    minecraft.setScreen(new DisconnectedScreen(accessor.getParent(), accessor.getConnectFailedTitle(), ConnectScreen.UNKNOWN_HOST_MESSAGE));
-                });
-                return;
-            }
-
-            inetsocketaddress = optional.get();
-            Connection connection;
-            Future<QuicStreamChannel> streamChannelFuture;
-            synchronized (connectScreen) {
-                if (accessor.isAborted()) {
-                    return;
-                }
-
-                // same as Connection.connect
-
-                connection = new Connection(PacketFlow.CLIENTBOUND);
-                streamChannelFuture = connect(inetsocketaddress, connection);
-            }
-
-            QuicStreamChannel quicChannel = streamChannelFuture.syncUninterruptibly().get();
-            accessor.setChannelFuture(quicChannel.newSucceededFuture());
-
-            synchronized (connectScreen) {
-                if (accessor.isAborted()) {
-                    connection.disconnect(ConnectScreenAccessor.getAbortConnection());
-                    return;
-                }
-
-                accessor.setConnection(connection);
-            }
-
-            accessor.getConnection().setListener(new ClientHandshakePacketListenerImpl(
-                    accessor.getConnection(),
-                    minecraft,
-                    serverData,
-                    accessor.getParent(),
-                    false,
-                    null,
-                    accessor::invokeUpdateStatus));
-            //ConnectScreen.this::updateStatus));
-            accessor.getConnection().send(new ClientIntentionPacket(inetsocketaddress.getHostName(), inetsocketaddress.getPort(), ConnectionProtocol.LOGIN));
-            accessor.getConnection().send(new ServerboundHelloPacket(minecraft.getUser().getName(), Optional.ofNullable(minecraft.getUser().getProfileId())));
-        } catch (Exception exception2) {
-            if (accessor.isAborted()) {
-                return;
-            }
-
-            Throwable throwable = exception2.getCause();
-            Exception exception;
-            if (throwable instanceof Exception exception1) {
-                exception = exception1;
-            } else {
-                exception = exception2;
-            }
-
-            ConnectScreenAccessor.getLogger().error("Couldn't connect to server", exception2);
-            String s = inetsocketaddress == null ? exception.getMessage() : exception.getMessage().replaceAll(inetsocketaddress.getHostName() + ":" + inetsocketaddress.getPort(), "").replaceAll(inetsocketaddress.toString(), "");
-            minecraft.execute(() -> {
-                minecraft.setScreen(new DisconnectedScreen(accessor.getParent(), accessor.getConnectFailedTitle(), Component.translatable("disconnect.genericReason", s)));
-            });
-        }
+    public QuicConnector(@NotNull String name, ConnectScreen connectScreen, Minecraft minecraft, ServerAddress serverAddress, ServerData serverData) {
+        super(name, connectScreen, minecraft, serverAddress, serverData);
     }
 
     /**
@@ -148,9 +42,9 @@ public class QuicConnector extends Thread {
      *
      * @see Connection#connectToServer(InetSocketAddress, boolean)
      */
-    public static Connection connectToServer(SocketAddress remote) {
+    public static Connection connectToServer(SocketAddress remote, boolean useNativeTransport) {
         var connection = new Connection(PacketFlow.CLIENTBOUND);
-        connect(remote, connection).syncUninterruptibly();
+        connect(remote, connection, useNativeTransport).syncUninterruptibly();
         return connection;
     }
 
@@ -160,12 +54,8 @@ public class QuicConnector extends Thread {
      * @see Connection#connect(InetSocketAddress, boolean, Connection)
      */
     @SneakyThrows
-    public static Future<QuicStreamChannel> connect(SocketAddress remote, Connection connection) {
-        ((ConnectionAccessor) connection).setActivationHandler(NetworkHooks::registerClientLoginChannel);
-
-        Bootstrap bootstrap = new Bootstrap();
-        Channel channel = bootstrap.group(GROUP)
-                .channel(NioDatagramChannel.class)
+    public static Future<QuicStreamChannel> connect(SocketAddress remote, Connection connection, boolean useNativeTransport) {
+        Channel channel = datagramBootstrap(useNativeTransport)
                 .handler(new QuicClientCodecBuilder()
                         .sslContext(SSL_CONTEXT)
                         .initialMaxData(33554432L)
@@ -187,25 +77,24 @@ public class QuicConnector extends Thread {
                         ch.pipeline().addLast(new QuicConnectionHandler());
                     }
                 })
-                .streamHandler(new QuicStreamInitializer(connection))
+                .streamHandler(new ClientChannelInitializer(connection))
                 .remoteAddress(remote)
                 .connect()
                 .get();
 
         // 创建流并发送数据
-        return quicChannel.createStream(QuicStreamType.BIDIRECTIONAL, new QuicStreamInitializer(connection));
+        return quicChannel.createStream(QuicStreamType.BIDIRECTIONAL, new ClientChannelInitializer(connection));
     }
 
-    @Slf4j
-    @RequiredArgsConstructor
-    private static class QuicStreamInitializer extends ChannelInitializer<QuicStreamChannel> {
-        private final Connection connection;
+    @SneakyThrows
+    @Override
+    public Future<QuicStreamChannel> doConnect(SocketAddress remote, Connection connection, boolean useNativeTransport) {
+        return connect(remote, connection, useNativeTransport);
+    }
 
-        @Override
-        protected void initChannel(QuicStreamChannel ch) {
-            ChannelPipeline channelpipeline = ch.pipeline().addLast("timeout", new ReadTimeoutHandler(30));
-            Connection.configureSerialization(channelpipeline, PacketFlow.CLIENTBOUND);
-            channelpipeline.addLast("packet_handler", connection);
+    private static class QuicStreamInitializer extends ClientChannelInitializer {
+        public QuicStreamInitializer(Connection connection) {
+            super(connection);
         }
 
         @Override
