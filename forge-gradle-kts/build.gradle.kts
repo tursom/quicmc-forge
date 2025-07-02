@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
   kotlin("jvm") version "1.9.10"
   `java-gradle-plugin`
@@ -14,7 +16,6 @@ repositories {
 
 dependencies {
   compileOnly(kotlin("gradle-plugin"))
-  compileOnly("org.spongepowered:mixingradle:0.7-SNAPSHOT")
   compileOnly("net.minecraftforge.gradle:ForgeGradle:6.0.36")
 }
 
@@ -25,4 +26,14 @@ gradlePlugin {
       implementationClass = "cn.tursom.gradle.ForgeGradleKts"
     }
   }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+  sourceCompatibility = "17"
+  targetCompatibility = "17"
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+  kotlinOptions.jvmTarget = "17"
+  kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
 }

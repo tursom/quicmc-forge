@@ -1,3 +1,7 @@
+plugins {
+  id("com.gradleup.shadow") version "8.3.8"
+}
+
 defaultMinecraft {
 }
 
@@ -10,4 +14,30 @@ dependencies {
   minecraft("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
 
   implementation(fg.deobf(project(":netmix")))
+
+  // netty quic
+  val nettyQuicVersion = "0.0.72.Final"
+  minecraftLibrary("io.netty.incubator:netty-incubator-codec-classes-quic:$nettyQuicVersion")
+}
+
+tasks.build {
+  finalizedBy(tasks.shadowJar)
+}
+
+tasks.shadowJar {
+  dependsOn(tasks.build)
+
+  from(tasks.jar.get().outputs.files.files)
+
+  var afterJar = 0
+  include { element ->
+    if (element.name.endsWith(".jar")) {
+      afterJar++
+    }
+    afterJar > 1 || !element.name.endsWith(".class")
+  }
+
+  dependencies {
+    exclude(dependency("^(?!io.netty.incubator).*:.*:.*"))
+  }
 }

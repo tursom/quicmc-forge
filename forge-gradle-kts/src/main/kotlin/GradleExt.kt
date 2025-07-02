@@ -3,7 +3,6 @@ import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionContainer
 import org.gradle.api.tasks.SourceSet
 import org.gradle.api.tasks.SourceSetContainer
-import org.spongepowered.asm.gradle.plugins.MixinExtension
 
 inline fun <reified T> ExtensionContainer.getByNameAndType(name: String): T {
   return getByName(name) as T
