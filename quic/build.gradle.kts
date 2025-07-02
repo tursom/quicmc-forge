@@ -20,7 +20,7 @@ dependencies {
 }
 
 tasks.build {
-  finalizedBy(tasks.shadowJar)
+  dependsOn(tasks.shadowJar)
 }
 
 tasks.shadowJar {
