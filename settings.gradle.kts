@@ -13,3 +13,8 @@ plugins {
 }
 
 rootProject.name = "quicmc"
+
+includeBuild("forge-gradle-kts")
+include("netmix")
+include("quic")
+include("ws")
