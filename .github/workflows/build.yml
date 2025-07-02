@@ -43,7 +43,13 @@ jobs:
           mkdir -p jars
           cp netmix/build/libs/*.jar jars/
           cp quic/build/libs/*.jar jars/
-          cp ws/build/libs/*-all.jar jars/
+          cp ws/build/libs/*.jar jars/
+          # 重命名去掉 -all 后缀
+          for file in jars/*-all.jar; do
+            if [ -f "$file" ]; then
+              mv "$file" "${file%-all.jar}.jar"
+            fi
+          done
         shell: bash
 
       # 上传 jar 包到 GitHub Actions 的工件
