@@ -2,8 +2,7 @@ plugins {
   id("com.gradleup.shadow") version "8.3.8"
 }
 
-defaultMinecraft {
-}
+defaultMinecraft {}
 
 dependencies {
   // Specify the version of Minecraft to use.
@@ -25,19 +24,13 @@ tasks.build {
 }
 
 tasks.shadowJar {
-  dependsOn(tasks.build)
-
-  from(tasks.jar.get().outputs.files.files)
-
-  var afterJar = 0
-  include { element ->
-    if (element.name.endsWith(".jar")) {
-      afterJar++
-    }
-    afterJar > 1 || !element.name.endsWith(".class")
-  }
-
   dependencies {
     exclude(dependency("^(?!io.netty.incubator).*:.*:.*"))
   }
+
+  finalizedBy("reobfShadowJar")
+}
+
+reobf {
+  create("shadowJar")
 }
