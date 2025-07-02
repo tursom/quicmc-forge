@@ -35,7 +35,7 @@ jobs:
 
       # 构建项目
       - name: Build with Gradle
-        run: ./gradlew build
+        run: bash gradlew build
 
       # 保存 jar 包
       - name: Save JARs
