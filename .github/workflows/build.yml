@@ -48,7 +48,7 @@ jobs:
 
       # 上传 jar 包到 GitHub Actions 的工件
       - name: Upload JARs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: built-jars
           path: jars
