@@ -61,3 +61,10 @@ mandatory = true
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "netmix"
+mandatory = true
+versionRange = "${mod_version}"
+ordering = "AFTER"
+side = "BOTH"
