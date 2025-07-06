@@ -17,6 +17,11 @@ dependencies {
   // netty quic
   val nettyQuicVersion = "0.0.72.Final"
   minecraftLibrary("io.netty.incubator:netty-incubator-codec-classes-quic:$nettyQuicVersion")
+  minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:linux-x86_64")
+  minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:linux-aarch_64")
+  minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:osx-x86_64")
+  minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:osx-aarch_64")
+  minecraftLibrary("io.netty.incubator:netty-incubator-codec-native-quic:$nettyQuicVersion:windows-x86_64")
 }
 
 tasks.build {
