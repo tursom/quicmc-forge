@@ -1,5 +1,6 @@
 package cn.tursom.netmix.network;
 
+import lombok.NonNull;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.multiplayer.ServerData;
@@ -14,15 +15,18 @@ import java.net.SocketAddress;
  * {@link ClientProtocol} 的实现应该是全局单例，通过{@link ProtocolManager}进行注册与管理。
  */
 public interface ClientProtocol {
+    @NonNull
     Thread newConnector(@NotNull String name,
                         ConnectScreen connectScreen,
                         Minecraft minecraft,
                         ServerAddress serverAddress,
                         ServerData serverData);
 
+    @NonNull
     Connection connectToServer(ServerData serverData, SocketAddress remote, boolean useNativeTransport);
 
     boolean isValidProtocol(String address);
 
+    @NonNull
     String getRawAddress(String address);
 }

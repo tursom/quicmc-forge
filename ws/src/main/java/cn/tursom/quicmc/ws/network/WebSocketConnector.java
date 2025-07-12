@@ -10,7 +10,6 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.websocketx.*;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.Promise;
@@ -26,12 +25,23 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import org.jetbrains.annotations.NotNull;
 
+import javax.net.ssl.SSLException;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.List;
 
 @Slf4j
 public class WebSocketConnector extends AbstractConnector {
+    private static final SslContext SSL_CONTEXT;
+
+    static {
+        try {
+            SSL_CONTEXT = SslContextBuilder.forClient().build();
+        } catch (SSLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static final AttributeKey<Promise<Channel>> HANDSHAKE_PROMISE = AttributeKey.valueOf("websocket_handshake_promise");
 
     public WebSocketConnector(@NotNull String name, ConnectScreen connectScreen, Minecraft minecraft, ServerAddress serverAddress, ServerData serverData) {
@@ -64,9 +74,7 @@ public class WebSocketConnector extends AbstractConnector {
                     protected void initChannel(Channel ch) {
                         ChannelPipeline pipeline = ch.pipeline();
                         if ("wss".equals(scheme)) {
-                            SslContext sslContext = SslContextBuilder.forClient()
-                                    .trustManager(InsecureTrustManagerFactory.INSTANCE).build();
-                            pipeline.addLast(sslContext.newHandler(ch.alloc(), host, port));
+                            pipeline.addLast(SSL_CONTEXT.newHandler(ch.alloc(), host, port));
                         }
                         pipeline.addLast(new HttpClientCodec());
                         pipeline.addLast(new HttpObjectAggregator(8192));

@@ -21,11 +21,13 @@ import static lombok.AccessLevel.PRIVATE;
 public class WebSocketProtocol implements ClientProtocol {
     public static final WebSocketProtocol INSTANCE = new WebSocketProtocol();
 
+    @NotNull
     @Override
     public Thread newConnector(@NotNull String name, ConnectScreen connectScreen, Minecraft minecraft, ServerAddress serverAddress, ServerData serverData) {
         return new WebSocketConnector(name, connectScreen, minecraft, serverAddress, serverData);
     }
 
+    @NotNull
     @Override
     public Connection connectToServer(ServerData serverData, SocketAddress remote, boolean useNativeTransport) {
         return WebSocketConnector.connectToServer(serverData, useNativeTransport);
@@ -36,6 +38,7 @@ public class WebSocketProtocol implements ClientProtocol {
         return address != null && (address.startsWith("ws://") || address.startsWith("wss://"));
     }
 
+    @NotNull
     @Override
     public String getRawAddress(String address) {
         if (!isValidProtocol(address)) {

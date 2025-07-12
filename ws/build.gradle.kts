@@ -11,9 +11,7 @@ dependencies {
   // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
   minecraft("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
 
-  minecraftLibrary(project(":netmix")) {
-    exclude("net.minecraftforge")
-  }
+  implementation(fg.deobf(project(":netmix")))
 
   val nettyVersion = "4.1.82.Final"
   minecraftLibrary("io.netty", "netty-codec-http", nettyVersion) {

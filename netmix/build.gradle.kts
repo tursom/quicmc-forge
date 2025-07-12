@@ -42,4 +42,10 @@ mixin.run {
 dependencies {
   minecraft("net.minecraftforge:forge:${minecraft_version}-${forge_version}")
   annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
+
+  val mixinextrasVersion = "0.4.1"
+  compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:$mixinextrasVersion")!!)
+  implementation(jarJar("io.github.llamalad7:mixinextras-forge:$mixinextrasVersion")) {
+    jarJar.ranged(this, "[$mixinextrasVersion,)")
+  }
 }
